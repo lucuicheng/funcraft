@@ -1,10 +1,12 @@
 'use strict';
 
 const docker = require('../docker');
-
+const { execSync } = require('child_process');
+const fs = require('fs-extra');
 const buildOpts = require('./build-opts');
 const fcBuilders = require('@alicloud/fc-builders');
 const { processorTransformFactory } = require('../error-processor');
+const path = require('path');
 
 async function buildInDocker(serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, preferredImage, stages) {
   const opts = await buildOpts.generateBuildContainerBuildOpts(serviceName, 
@@ -41,9 +43,36 @@ async function buildInDocker(serviceName, serviceRes, functionName, functionRes,
   }
 }
 
+async function buildInBuildkit(serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, stages) {
+  const targetBuildStage = 'buildresult';
+  const dockerfilePath = path.join(codeUri, '.buildkit.generated.dockerfile');
+  await buildOpts.generateDockerfileForBuildkit(dockerfilePath, serviceName, 
+    serviceRes, 
+    functionName, 
+    functionRes, 
+    baseDir, 
+    codeUri, 
+    funcArtifactDir, 
+    verbose, 
+    stages,
+    targetBuildStage);
+  
+  // exec build
+  execSync(
+    `buildctl build --frontend dockerfile.v0 --local context=${baseDir} --local dockerfile=${path.dirname(dockerfilePath)} --opt filename=${path.basename(dockerfilePath)} --opt target=${targetBuildStage} --output type=local,dest=${baseDir}`, {
+      stdio: 'inherit'
+    });
+  // rm dockerfile
+  await fs.remove(dockerfilePath);
+  const dockerfileInArtifact = path.join(funcArtifactDir, path.basename(dockerfilePath));
+  if (await fs.pathExists(dockerfileInArtifact)) {
+    await fs.remove(dockerfileInArtifact);
+  }
+}
+
 async function buildInProcess(serviceName, functionName, codeUri, runtime, funcArtifactDir, verbose, stages) {
   const builder = new fcBuilders.Builder(serviceName, functionName, codeUri, runtime, funcArtifactDir, verbose, stages);
   await builder.build();
 }
 
-module.exports = { buildInDocker, buildInProcess };
+module.exports = { buildInDocker, buildInProcess, buildInBuildkit };
