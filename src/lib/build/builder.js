@@ -8,6 +8,7 @@ const fcBuilders = require('@alicloud/fc-builders');
 const { processorTransformFactory } = require('../error-processor');
 const path = require('path');
 const { generatePwdFileInTargetDir } = require('../utils/passwd');
+const buildkit = require('../buildkit');
 
 async function buildInDocker(serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, preferredImage, stages) {
   const opts = await buildOpts.generateBuildContainerBuildOpts(serviceName, 
@@ -69,8 +70,9 @@ async function buildInBuildkit(serviceName, serviceRes, functionName, functionRe
   if (await fs.pathExists(dockerfileInArtifact)) {
     await fs.remove(dockerfileInArtifact);
   }
-  const pwdFilePath = await generatePwdFileInTargetDir(baseDir);
-  if (pwdFilePath) {
+  const passwdMount = await buildkit.resolvePasswdMount(baseDir);
+  if (passwdMount) {
+    const pwdFilePath = passwdMount.Source;
     await fs.remove(pwdFilePath);
     const pwdFileInArtifact = path.join(funcArtifactDir, path.basename(pwdFilePath));
     if (await fs.pathExists(pwdFileInArtifact)) {

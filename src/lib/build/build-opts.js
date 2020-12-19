@@ -53,9 +53,9 @@ async function generateBuildContainerBuildOpts(serviceName, serviceRes, function
 }
 
 async function generateDockerfileForBuildkit(dockerfilePath, serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, stages, targetBuildStage) {
+  console.log('Generating dockerfile in buildkit format.');
   const functionProps = functionRes.Properties;
   const runtime = functionProps.Runtime;
-
 
   const envs = await docker.generateDockerfileEnvs(baseDir, serviceName, serviceRes.Properties, functionName, functionProps, null, null);
 
