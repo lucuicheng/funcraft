@@ -7,7 +7,7 @@ const path = require('path');
 const nas = require('../nas');
 const _ = require('lodash');
 const fs = require('fs-extra');
-const { dockerfileForBuildkit, generateSrcDstPairsFromMounts } = require('../buildkit');
+const buildkit = require('../buildkit');
 
 async function generateBuildContainerBuildOpts(serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, preferredImage, stages) {
   const functionProps = functionRes.Properties;
@@ -71,10 +71,11 @@ async function generateDockerfileForBuildkit(dockerfilePath, serviceName, servic
     Target: funcArtifactMountDir,
     ReadOnly: false
   };
-  const passwdMount = await docker.resolvePasswdMount();
+  // add password to /etc/passwd
+  const passwdMount = await buildkit.resolvePasswdMount(baseDir);
   const mountsInDocker = _.compact([codeMount, artifactDirMount, ...nasMounts, passwdMount]);
 
-  const { fromSrcToDstPairsInBuild, fromSrcToDstPairsInOutput } = generateSrcDstPairsFromMounts(mountsInDocker);
+  const { fromSrcToDstPairsInBuild, fromSrcToDstPairsInOutput } = buildkit.generateSrcDstPairsFromMounts(mountsInDocker);
 
   const params = {
     'method': 'build',
@@ -89,7 +90,7 @@ async function generateDockerfileForBuildkit(dockerfilePath, serviceName, servic
 
   const cmd = `fun-install build --json-params '${JSON.stringify(params)}'`;
   const contentDir = baseDir;
-  const dockerfileContent = await dockerfileForBuildkit(runtime, fromSrcToDstPairsInOutput, fromSrcToDstPairsInBuild, contentDir, targetBuildStage, envs, cmd);
+  const dockerfileContent = await buildkit.dockerfileForBuildkit(runtime, fromSrcToDstPairsInOutput, fromSrcToDstPairsInBuild, contentDir, targetBuildStage, envs, cmd);
 
   await fs.writeFile(dockerfilePath, dockerfileContent);
 }

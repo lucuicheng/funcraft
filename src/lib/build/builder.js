@@ -7,6 +7,7 @@ const buildOpts = require('./build-opts');
 const fcBuilders = require('@alicloud/fc-builders');
 const { processorTransformFactory } = require('../error-processor');
 const path = require('path');
+const { generatePwdFileInTargetDir } = require('../utils/passwd');
 
 async function buildInDocker(serviceName, serviceRes, functionName, functionRes, baseDir, codeUri, funcArtifactDir, verbose, preferredImage, stages) {
   const opts = await buildOpts.generateBuildContainerBuildOpts(serviceName, 
@@ -59,14 +60,22 @@ async function buildInBuildkit(serviceName, serviceRes, functionName, functionRe
   
   // exec build
   execSync(
-    `buildctl build --frontend dockerfile.v0 --local context=${baseDir} --local dockerfile=${path.dirname(dockerfilePath)} --opt filename=${path.basename(dockerfilePath)} --opt target=${targetBuildStage} --output type=local,dest=${baseDir}`, {
+    `buildctl build --no-cache --frontend dockerfile.v0 --local context=${baseDir} --local dockerfile=${path.dirname(dockerfilePath)} --opt filename=${path.basename(dockerfilePath)} --opt target=${targetBuildStage} --output type=local,dest=${baseDir}`, {
       stdio: 'inherit'
     });
-  // rm dockerfile
+  // clean
   await fs.remove(dockerfilePath);
   const dockerfileInArtifact = path.join(funcArtifactDir, path.basename(dockerfilePath));
   if (await fs.pathExists(dockerfileInArtifact)) {
     await fs.remove(dockerfileInArtifact);
+  }
+  const pwdFilePath = await generatePwdFileInTargetDir(baseDir);
+  if (pwdFilePath) {
+    await fs.remove(pwdFilePath);
+    const pwdFileInArtifact = path.join(funcArtifactDir, path.basename(pwdFilePath));
+    if (await fs.pathExists(pwdFileInArtifact)) {
+      await fs.remove(pwdFileInArtifact);
+    }
   }
 }
 

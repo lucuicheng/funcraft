@@ -1,9 +1,11 @@
 'use strict';
+
 const dockerOpts = require('./docker-opts');
 const fs = require('fs-extra');
 const path = require('path');
 const { DockerfileParser } = require('dockerfile-ast');
 const debug = require('debug')('fun:build');
+const { generatePwdFileInTargetDir } = require('./utils/passwd');
 
 function generateBuildkitMountsFromDockerMounts(mountsInDocker, baseDir) {
   const mounts = [];
@@ -88,8 +90,25 @@ async function convertDockerfileToBuildkitFormat(dockerfilePath, fromSrcToDstPai
   return content.join('\n');
 }
 
+
+
+async function resolvePasswdMount(contentDir) {
+  if (process.platform === 'linux') {
+    return {
+      Type: 'bind',
+      Source: await generatePwdFileInTargetDir(contentDir),
+      Target: '/etc/passwd',
+      ReadOnly: true
+    };
+  }
+
+  return null;
+}
+
 module.exports = { 
   generateBuildkitMountsFromDockerMounts, 
   dockerfileForBuildkit, 
   convertDockerfileToBuildkitFormat,
-  generateSrcDstPairsFromMounts };
+  generateSrcDstPairsFromMounts,
+  resolvePasswdMount
+  };

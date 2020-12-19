@@ -44,6 +44,20 @@ async function generatePwdFile(uid, gid) {
   return filePath;
 }
 
+async function generatePwdFileInTargetDir(tragetDir, uid, gid) {
+  if (!uid) { uid = process.getuid(); }
+  if (!gid) { gid = process.getgid(); }
+
+  const filePath = path.join(tragetDir, `.fun_${uid}_${gid}_passwd`);
+
+  if (!await fs.pathExists(filePath)) {
+    const content = passwdContent + `funcrafter:x:${uid}:${gid}::/tmp:/usr/sbin/nologin`;
+    await fs.writeFile(filePath, content);
+  }
+
+  return filePath;
+}
+
 module.exports = {
-  generatePwdFile
+  generatePwdFile, generatePwdFileInTargetDir
 };
