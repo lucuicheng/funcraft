@@ -26,6 +26,7 @@ const { dockerBuildAndPush, buildkitBuild } = require('./build-image');
 const { execSync } = require('child_process');
 const _ = require('lodash');
 const { convertDockerfileToBuildkitFormat } = require('../buildkit');
+const { promptForConfirmContinue } = require('../init/prompt');
 
 async function convertFunYmlToFunfile(funymlPath, funfilePath) {
   const generatedFunfile = await parser.funymlToFunfile(funymlPath);
@@ -217,7 +218,7 @@ async function recordMetaData(baseDir, functions, tplPath, metaPath, buildOps) {
   await recordMtimes([...metaPaths, tplPath], buildOps, metaPath);
 }
 
-async function buildFunction(buildName, tpl, baseDir, useDocker, useBuildkit, stages, verbose, tplPath) {
+async function buildFunction(buildName, tpl, baseDir, useDocker, useBuildkit, stages, verbose, tplPath, assumeYes) {
   const buildStage = _.includes(stages, 'build');
 
   if (useDocker) {
@@ -260,7 +261,12 @@ async function buildFunction(buildName, tpl, baseDir, useDocker, useBuildkit, st
       }
       if (useDocker) {
         await dockerBuildAndPush(codeUri, functionRes.Properties.CustomContainerConfig.Image, baseDir, functionName, serviceName);
-      } else {
+      } else if (useBuildkit) {
+        const msg = `Use fun build to build image and push to ${functionRes.Properties.CustomContainerConfig.Image}.Please confirm to continue.`;
+        if (!assumeYes && !await promptForConfirmContinue(msg)) {
+          skippedBuildFuncs.push(func);
+          continue;
+        }
         await buildkitBuild(codeUri, functionRes.Properties.CustomContainerConfig.Image, baseDir, functionName, serviceName);
       }
       continue;

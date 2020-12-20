@@ -2,6 +2,8 @@ const { execSync } = require('child_process');
 const { yellow } = require('colors');
 const path = require('path');
 const fs = require('fs-extra');
+const _ = require('lodash');
+const { output } = require('../utils/fun-nas-server/webpack.common');
 
 
 async function dockerBuildAndPush(dockerfileUri, image, baseDir, functionName, serviceName) {
@@ -52,14 +54,14 @@ async function buildkitBuild(dockerfileUri, image, baseDir, functionName, servic
   if (!await fs.exists(dockerfile)) {
     throw new Error(`File ${dockerfile} not found.`);
   }
-
-  execSync(`buildctl build \
-              --frontend dockerfile.v0 \
-              --local context=. \
-              --local dockerfile=${dockerfile} \
-              -output type=image,name=${image}`, {
-    stdio: 'inherit'
-  });
+  execSync(`buildctl build --no-cache \
+            --frontend dockerfile.v0 \
+            --local context=${path.dirname(dockerfile)} \
+            --local dockerfile=${path.dirname(dockerfile)} \
+            --output type=image,name=${image},push=true`, {
+  stdio: 'inherit'
+});
+  
 }
 
 module.exports = {
