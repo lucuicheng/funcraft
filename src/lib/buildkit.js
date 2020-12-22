@@ -43,7 +43,7 @@ async function dockerfileForBuildkit(runtime, fromSrcToDstPairsInOutput, fromSrc
     envs.forEach( e => content.push(`ENV ${e}`));
   }
   if (fromSrcToDstPairsInBuild) {
-    fromSrcToDstPairsInBuild.forEach( pair => content.push(`COPY ${contentDir === pair.src ? './' : path.relative(contentDir, pair.src)} ${pair.dst}`));
+    fromSrcToDstPairsInBuild.forEach( pair => content.push(`COPY ${(contentDir === pair.src || path.resolve(contentDir) === pair.src) ? './' : path.relative(contentDir, pair.src)} ${pair.dst}`));
   }
   if (cmd) {
     content.push(`RUN ${cmd}`);
@@ -52,7 +52,7 @@ async function dockerfileForBuildkit(runtime, fromSrcToDstPairsInOutput, fromSrc
   if (fromSrcToDstPairsInOutput) {
     content.push(`FROM scratch as ${targetBuildStage}`);
 
-    fromSrcToDstPairsInOutput.forEach( pair => content.push(`COPY --from=${runtime} ${pair.src} ${contentDir === pair.dst ? './' : path.relative(contentDir, pair.dst)}`));
+    fromSrcToDstPairsInOutput.forEach( pair => content.push(`COPY --from=${runtime} ${pair.src} ${(contentDir === pair.dst || path.resolve(contentDir) === pair.dst) ? './' : path.relative(contentDir, pair.dst)}`));
   }
   return content.join('\n');
 }
